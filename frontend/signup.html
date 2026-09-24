@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NER</title>
+    <script>
+        (function(){
+            const _w = console.warn;
+            console.warn = function(...a) {
+                if (a[0] && typeof a[0] === 'string' && a[0].indexOf('cdn.tailwindcss.com') !== -1) return;
+                _w.apply(console, a);
+            };
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="lib/lucide.min.js"></script>
+    <script src="../storage/database.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { brandDark: '#0f294a', brandBlue: '#1a73e8', brandGreen: '#10b981', brandAmber: '#f59e0b', brandRed: '#ef4444' },
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 p-1.5 flex items-center justify-center shadow-md border border-cyan-500/30 group-hover:scale-105 group-hover:border-cyan-400 transition-all duration-300">
+                    <svg viewBox="0 0 100 100" class="w-full h-full">
+                        <path d="M 50 14 C 68 14, 78 20, 78 32 C 78 56, 62 74, 50 82 C 38 74, 22 56, 22 32 C 22 20, 32 14, 50 14 Z" 
+                              fill="none" stroke="#38bdf8" stroke-width="4.5" stroke-linejoin="round" />
+                        <polygon points="50,28 33,56 67,56" fill="#ffffff" />
+                        <polygon points="50,28 43,42 50,46 57,42" fill="#38bdf8" />
+                        <path d="M 43 56 Q 50 67 36 80 L 64 80 Q 51 67 57 56 Z" fill="#020617" stroke="#10b981" stroke-width="2" />
+                        <line x1="50" y1="59" x2="50" y2="65" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" />
+                        <line x1="50" y1="70" x2="50" y2="78" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" />
+                        <circle cx="50" cy="22" r="3.5" fill="#38bdf8" />
+                    </svg>
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-lg font-extrabold tracking-tight text-blue-950 dark:text-white leading-none">SafePass</span>
+                        <span class="text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-cyan-300 font-extrabold px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-700">NER</span>
+                    </div>
+                    <span class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">Emergency SOS & Road Intelligence</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-3">
+                <a href="index.html" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-blue-900 dark:text-cyan-300 font-semibold bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 transition text-xs sm:text-sm active:scale-95">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    <span>Back to Route Navigator</span>
+                </a>
+                <button onclick="toggleTheme()" id="themeToggleBtn" class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition active:scale-95">
+                    <i data-lucide="moon" id="themeToggleIcon" class="w-3.5 h-3.5 text-blue-900 dark:text-cyan-300"></i>
+                    <span id="themeToggleText" class="hidden sm:inline">Dark</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
+        <div class="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col gap-6 relative overflow-hidden">
+            <div class="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/70 text-red-600 flex items-center justify-center shadow-xs shrink-0">
+                        <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Create SafePass Account</h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Automated SOS Distress Alert & Emergency Contact Protection</p>
+                    </div>
+                </div>
+                <button type="button" onclick="autoFillDemoProfile()" class="self-start sm:self-auto text-xs font-bold text-blue-700 dark:text-cyan-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 active:scale-95">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span>Fill Demo Profile</span>
+                </button>
+            </div>
+
+            <div class="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl p-4 flex items-start gap-3">
+                <i data-lucide="info" class="w-5 h-5 text-blue-700 dark:text-blue-400 shrink-0 mt-0.5"></i>
+                <div class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <b class="text-blue-950 dark:text-cyan-300 block mb-0.5">Emergency SOS Protection Protocol:</b>
+                    When you are at risk or meet an incident in the mountain passes, pressing the <b>SOS button</b> will automatically broadcast your live GPS coordinates, current address, and risk bulletin to your Father, Mother, and the Nearest Police Station (112).
+                </div>
+            </div>
+
+            <form id="signupForm" onsubmit="handleSignup(event)" class="flex flex-col gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label for="fullName" class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="user" class="w-3.5 h-3.5 text-blue-600"></i>
+                            <span>Full Name *</span>
+                        </label>
+                        <input type="text" id="fullName" autocomplete="name" required placeholder="e.g. Rahul Sharma" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition" />
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <label for="userPhone" class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="phone" class="w-3.5 h-3.5 text-blue-600"></i>
+                            <span>Your Phone Number *</span>
+                        </label>
+                        <input type="tel" id="userPhone" autocomplete="tel" required placeholder="e.g. 9864012345" pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between">
+                            <label for="parentPhone" class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                <i data-lucide="users" class="w-3.5 h-3.5 text-red-600"></i>
+                                <span>Father / Guardian Phone *</span>
+                            </label>
+                            <span class="text-[10px] text-red-600 font-bold bg-red-50 dark:bg-red-950/60 px-1.5 py-0.5 rounded">SOS Recipient 1</span>
+                        </div>
+                        <input type="tel" id="parentPhone" autocomplete="tel" required placeholder="e.g. 9435054321" pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-red-500 focus:outline-none transition" />
+                        <span class="text-[10px] text-slate-500">Will receive instant SMS/WhatsApp alert with live GPS map link.</span>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between">
+                            <label for="motherPhone" class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                <i data-lucide="heart" class="w-3.5 h-3.5 text-red-600"></i>
+                                <span>Mother's Phone Number *</span>
+                            </label>
+                            <span class="text-[10px] text-red-600 font-bold bg-red-50 dark:bg-red-950/60 px-1.5 py-0.5 rounded">SOS Recipient 2</span>
+                        </div>
+                        <input type="tel" id="motherPhone" autocomplete="tel" required placeholder="e.g. 9435167890" pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-red-500 focus:outline-none transition" />
+                        <span class="text-[10px] text-slate-500">Will receive live distress message & nearest police station alert.</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label for="currentAddress" class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-blue-600"></i>
+                        <span>Current Living / Base Address *</span>
+                    </label>
+                    <textarea id="currentAddress" autocomplete="street-address" required rows="2" placeholder="e.g. House No 42, Zoo Road, Guwahati, Kamrup Metropolitan, Assam - 781024" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none"></textarea>
+                    <span class="text-[10px] text-slate-500">Included in the SOS police dispatch telegram for fast local verification.</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label for="password" class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="lock" class="w-3.5 h-3.5 text-blue-600"></i>
+                            <span>Create Account Password *</span>
+                        </label>
+                        <div class="relative">
+                            <input type="password" id="password" autocomplete="new-password" required minlength="4" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition pr-10" />
+                            <button type="button" onclick="togglePasswordVisibility('password')" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <i data-lucide="eye" id="passwordEyeIcon" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <label for="bloodGroup" class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="activity" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            <span>Blood Group (Emergency Triage)</span>
+                        </label>
+                        <select id="bloodGroup" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition cursor-pointer">
+                            <option value="O+">O Positive (O+)</option>
+                            <option value="A+">A Positive (A+)</option>
+                            <option value="B+">B Positive (B+)</option>
+                            <option value="AB+">AB Positive (AB+)</option>
+                            <option value="O-">O Negative (O-)</option>
+                            <option value="A-">A Negative (A-)</option>
+                            <option value="B-">B Negative (B-)</option>
+                            <option value="AB-">AB Negative (AB-)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
+                    <input type="checkbox" id="consentCheck" required class="mt-0.5 w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500 cursor-pointer" />
+                    <label for="consentCheck" class="text-slate-600 dark:text-slate-300 cursor-pointer leading-snug">
+                        I authorize SafePass NER to broadcast my live GPS telemetry and distress messages to my registered parents and emergency police control rooms (112) when I press the SOS button.
+                    </label>
+                </div>
+
+                <div id="signupError" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                    <span id="signupErrorText">Please fill in all required fields accurately.</span>
+                </div>
+
+                <button type="submit" id="btnSubmitSignup" class="w-full py-3.5 bg-gradient-to-r from-red-600 via-red-700 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 text-sm flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                    <span>Register Account & Activate Emergency SOS</span>
+                </button>
+            </form>
+
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                <div>
+                    Already have an account? 
+                    <a href="login.html" class="font-bold text-blue-600 dark:text-cyan-400 hover:underline ml-1">Log In here</a>
+                </div>
+                <div class="flex items-center gap-2 text-[11px]">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>National Emergency 112 Ready</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="signupSuccessModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 text-center animate-fade-scale">
+            <div class="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
+                <i data-lucide="check-circle" class="w-8 h-8"></i>
+            </div>
+            <div class="flex flex-col gap-1">
+                <h3 class="text-lg font-black text-slate-900 dark:text-white">Emergency Account Created!</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed" id="signupSuccessSummary">
+                    Your parents' contact numbers and address have been securely linked to your SOS beacon.
+                </p>
+            </div>
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 text-left text-xs flex flex-col gap-1.5">
+                <div class="flex justify-between"><span class="text-slate-400">User:</span><b id="confUserName" class="text-slate-800 dark:text-slate-200"></b></div>
+                <div class="flex justify-between"><span class="text-slate-400">Your Phone:</span><b id="confUserPhone" class="text-slate-800 dark:text-slate-200"></b></div>
+                <div class="flex justify-between"><span class="text-slate-400">Father's Phone:</span><b id="confParentPhone" class="text-red-600 font-bold"></b></div>
+                <div class="flex justify-between"><span class="text-slate-400">Mother's Phone:</span><b id="confMotherPhone" class="text-red-600 font-bold"></b></div>
+                <div class="flex justify-between"><span class="text-slate-400">Emergency Security:</span><b class="text-emerald-600 font-bold">Encrypted & Stored Privately</b></div>
+            </div>
+            <a href="index.html" class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95">
+                <span>Go to Route Navigator & Live Map</span>
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark');
+            localStorage.setItem('ner_theme', isDark ? 'dark' : 'light');
+            const icon = document.getElementById('themeToggleIcon');
+            const text = document.getElementById('themeToggleText');
+            if (icon) icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+            if (text) text.innerText = isDark ? 'Light' : 'Dark';
+            lucide.createIcons();
+        }
+
+        function togglePasswordVisibility(id) {
+            const input = document.getElementById(id);
+            const icon = document.getElementById('passwordEyeIcon');
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (icon) icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                if (icon) icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        function autoFillDemoProfile() {
+            document.getElementById('fullName').value = 'Rahul Sharma';
+            document.getElementById('userPhone').value = '9864012345';
+            document.getElementById('parentPhone').value = '9435054321';
+            document.getElementById('motherPhone').value = '9435167890';
+            document.getElementById('currentAddress').value = 'House No 42, Zoo Road, Guwahati, Kamrup Metropolitan, Assam - 781024';
+            document.getElementById('password').value = 'safepass2026';
+            document.getElementById('bloodGroup').value = 'O+';
+            document.getElementById('consentCheck').checked = true;
+        }
+
+        async function handleSignup(event) {
+            event.preventDefault();
+            const fullName = document.getElementById('fullName').value.trim();
+            const userPhone = document.getElementById('userPhone').value.trim();
+            const parentPhone = document.getElementById('parentPhone').value.trim();
+            const motherPhone = document.getElementById('motherPhone').value.trim();
+            const currentAddress = document.getElementById('currentAddress').value.trim();
+            const password = document.getElementById('password').value;
+            const bloodGroup = document.getElementById('bloodGroup').value;
+
+            const errBox = document.getElementById('signupError');
+            const errText = document.getElementById('signupErrorText');
+
+            if (!fullName || !userPhone || !parentPhone || !motherPhone || !currentAddress || !password) {
+                if (errBox && errText) {
+                    errText.innerText = 'Please complete all required fields.';
+                    errBox.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (userPhone.length < 10 || parentPhone.length < 10 || motherPhone.length < 10) {
+                if (errBox && errText) {
+                    errText.innerText = 'Please enter valid 10-digit phone numbers for user, father, and mother.';
+                    errBox.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (errBox) errBox.classList.add('hidden');
+
+            const passwordHash = hashPasswordMd5(password);
+
+            const userData = {
+                fullName: fullName,
+                userPhone: userPhone,
+                parentPhone: parentPhone,
+                motherPhone: motherPhone,
+                currentAddress: currentAddress,
+                passwordHash: passwordHash,
+                bloodGroup: bloodGroup,
+                registeredAt: new Date().toISOString()
+            };
+
+            await dbSaveUser(userData);
+            localStorage.setItem('ner_user_session', JSON.stringify(userData));
+
+            document.getElementById('confUserName').innerText = fullName;
+            document.getElementById('confUserPhone').innerText = userPhone;
+            document.getElementById('confParentPhone').innerText = parentPhone;
+            document.getElementById('confMotherPhone').innerText = motherPhone;
+
+            const modal = document.getElementById('signupSuccessModal');
+            if (modal) modal.classList.remove('hidden');
+            lucide.createIcons();
+
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2500);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('ner_theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark');
+                const icon = document.getElementById('themeToggleIcon');
+                const text = document.getElementById('themeToggleText');
+                if (icon) icon.setAttribute('data-lucide', 'sun');
+                if (text) text.innerText = 'Light';
+            }
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

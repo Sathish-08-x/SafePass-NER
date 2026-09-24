@@ -5,7 +5,7 @@ const ASSETS_TO_CACHE = [
     './login.html',
     './signup.html',
     './style.css',
-    './database.js',
+    '../storage/database.js',
     './script.js',
     './lib/maplibre-gl.css',
     './lib/maplibre-gl.js',

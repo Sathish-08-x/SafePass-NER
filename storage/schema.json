@@ -1,0 +1,41 @@
+{
+  "databaseName": "SafePassNER_DB",
+  "version": 1,
+  "description": "Client-side IndexedDB schema with LocalStorage sync fallback for SafePass-NER",
+  "stores": {
+    "users": {
+      "keyPath": "userPhone",
+      "autoIncrement": false,
+      "indexes": [
+        { "name": "parentPhone", "keyPath": "parentPhone", "unique": false },
+        { "name": "motherPhone", "keyPath": "motherPhone", "unique": false }
+      ],
+      "fields": {
+        "userPhone": "string (Primary Key)",
+        "fullName": "string",
+        "parentPhone": "string",
+        "motherPhone": "string",
+        "bloodGroup": "string",
+        "passwordHash": "string (RFC 1321 MD5)",
+        "createdAt": "ISO timestamp"
+      }
+    },
+    "sos_logs": {
+      "keyPath": "id",
+      "autoIncrement": true,
+      "indexes": [
+        { "name": "userPhone", "keyPath": "userPhone", "unique": false },
+        { "name": "timestamp", "keyPath": "timestamp", "unique": false }
+      ],
+      "fields": {
+        "id": "integer (Auto-increment)",
+        "userPhone": "string",
+        "timestamp": "ISO timestamp",
+        "latitude": "number",
+        "longitude": "number",
+        "segmentRisk": "string",
+        "status": "string"
+      }
+    }
+  }
+}
